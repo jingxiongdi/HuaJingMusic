@@ -2,6 +2,7 @@ package com.jingxiongdi.huajingmusic.adapter;
 
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -83,7 +84,7 @@ public class MainAdapter extends BaseExpandableListAdapter {
             myText = (TextView)convertView;
             myText.setText(childPosition+1+" "+songList.get(groupPosition).get(childPosition).getFileName());
         } else {
-            myText = createView(childPosition+1+" "+songList.get(groupPosition).get(childPosition).getFileName());
+            myText = createChidView(childPosition+1+" "+songList.get(groupPosition).get(childPosition).getFileName());
         }
         return myText;
     }
@@ -101,6 +102,20 @@ public class MainAdapter extends BaseExpandableListAdapter {
         myText.setLayoutParams(layoutParams);
         myText.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
         myText.setPadding((int) DensityUtils.px2dp(mContext,250f), 0, 0, 0);
+        myText.setText(content);
+        return myText;
+    }
+
+    private TextView createChidView(String content) {
+        AbsListView.LayoutParams layoutParams = new AbsListView.LayoutParams(
+                ViewGroup.LayoutParams.FILL_PARENT, (int) DensityUtils.px2dp(mContext,250f));
+        TextView myText = new TextView(mContext);
+        myText.setTextSize(16);
+        myText.setLayoutParams(layoutParams);
+        myText.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
+        myText.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+        myText.setMaxLines(1);
+        myText.setPadding((int) DensityUtils.px2dp(mContext,350f), 0, 0, 0);
         myText.setText(content);
         return myText;
     }

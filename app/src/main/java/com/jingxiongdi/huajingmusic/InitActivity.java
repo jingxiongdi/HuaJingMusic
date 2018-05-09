@@ -35,16 +35,28 @@ public class InitActivity extends BaseActivity {
             @Override
             public void run() {
                 ArrayList<Song> songs =  AudioUtils.getAllSongs(InitActivity.this);
+
+
                 L.d("songs : "+songs.size());
 //                if(SPUtils.contains(InitActivity.this, MusicConstants.ALL_MUSIC_IN_PHONE)){
 //                    SPUtils.remove(InitActivity.this,MusicConstants.ALL_MUSIC_IN_PHONE);
 //                }
 //                SPUtils.put(InitActivity.this,MusicConstants.ALL_MUSIC_IN_PHONE,songs);
                 ArrayList<Song> songs1 =  DBHelper.getInstance(InitActivity.this).queryAllSong();
-                if(songs1 == null || songs1.size() != songs.size()){
+                if(songs!=null&&songs.size()!=0&&(songs1 == null || songs1.size() != songs.size())){
                     L.d("dropAndRecreateTable ");
-                    DBHelper.getInstance(InitActivity.this).dropAndRecreateTable();
-                    DBHelper.getInstance(InitActivity.this).addSongList(songs);
+                    ArrayList<Song> songDataBase = new ArrayList<>();
+                    //过滤小于60s的音乐
+                    for(Song song:songs){
+                   //     if(song.getDuration() > 60000)
+                        {
+                            songDataBase.add(song);
+                        }
+                    }
+                    if(songDataBase.size() > 0){
+                        DBHelper.getInstance(InitActivity.this).dropAndRecreateTable();
+                        DBHelper.getInstance(InitActivity.this).addSongList(songDataBase);
+                    }
                 }
 
                 handler.sendEmptyMessageDelayed(0,500);

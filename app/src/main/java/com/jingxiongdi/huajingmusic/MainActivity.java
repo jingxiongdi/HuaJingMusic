@@ -10,8 +10,6 @@ import android.widget.ExpandableListView;
 import com.jingxiongdi.huajingmusic.adapter.MainAdapter;
 import com.jingxiongdi.huajingmusic.bean.Song;
 import com.jingxiongdi.huajingmusic.util.DBHelper;
-import com.jingxiongdi.huajingmusic.util.MusicConstants;
-import com.jingxiongdi.huajingmusic.util.SPUtils;
 import com.jingxiongdi.huajingmusic.util.ToastUtil;
 
 import java.util.ArrayList;
