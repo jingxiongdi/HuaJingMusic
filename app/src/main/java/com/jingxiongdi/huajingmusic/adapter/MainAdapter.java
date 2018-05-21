@@ -4,12 +4,15 @@ package com.jingxiongdi.huajingmusic.adapter;
 import android.content.Context;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.BaseExpandableListAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.jingxiongdi.huajingmusic.R;
 import com.jingxiongdi.huajingmusic.bean.Song;
 import com.jingxiongdi.huajingmusic.util.DensityUtils;
 
@@ -23,11 +26,15 @@ public class MainAdapter extends BaseExpandableListAdapter {
     private Context mContext;
     private ArrayList<ArrayList<Song>> songList;
     private ArrayList<String> songListString;
+    private LayoutInflater mInflater;
+
+    private int curPlayPos = 0;
 
     public MainAdapter(Context context, ArrayList<ArrayList<Song>> songs,ArrayList<String> songString){
         mContext = context;
         songList = songs;
         songListString = songString;
+        mInflater = LayoutInflater.from(mContext);
     }
 
     @Override
@@ -79,19 +86,39 @@ public class MainAdapter extends BaseExpandableListAdapter {
 
     @Override
     public View getChildView(int groupPosition, int childPosition, boolean b, View convertView, ViewGroup viewGroup) {
-        TextView myText = null;
-        if (convertView != null) {
-            myText = (TextView)convertView;
-            myText.setText(childPosition+1+" "+songList.get(groupPosition).get(childPosition).getFileName());
+        final ViewHolder viewHolder;
+        if (convertView == null) {
+            viewHolder = new ViewHolder();
+            if (viewHolder != null)
+            {
+                convertView = mInflater.inflate(R.layout.list_child_item, null);
+                viewHolder.name = (TextView) convertView.findViewById(R.id.name);
+                viewHolder.playImage = (ImageView) convertView.findViewById(R.id.play_img);
+                convertView.setTag(viewHolder);
+            }
         } else {
-            myText = createChidView(childPosition+1+" "+songList.get(groupPosition).get(childPosition).getFileName());
+            viewHolder = (ViewHolder) convertView.getTag();
         }
-        return myText;
+        viewHolder.name.setText(childPosition+1+": "+songList.get(groupPosition).get(childPosition).getFileName());
+        if(curPlayPos == childPosition){
+            viewHolder.playImage.setBackgroundResource(R.mipmap.mini_play_button);
+        }
+        else {
+            viewHolder.playImage.setBackgroundResource(0);
+        }
+
+        return convertView;
+    }
+
+    public void refreshAdapter(int p){
+        curPlayPos = p;
+        notifyDataSetChanged();
     }
 
     @Override
     public boolean isChildSelectable(int i, int i1) {
-        return false;
+        //点击事件不生效
+        return true;
     }
 
     private TextView createView(String content) {
@@ -106,17 +133,23 @@ public class MainAdapter extends BaseExpandableListAdapter {
         return myText;
     }
 
-    private TextView createChidView(String content) {
-        AbsListView.LayoutParams layoutParams = new AbsListView.LayoutParams(
-                ViewGroup.LayoutParams.FILL_PARENT, (int) DensityUtils.px2dp(mContext,250f));
-        TextView myText = new TextView(mContext);
-        myText.setTextSize(16);
-        myText.setLayoutParams(layoutParams);
-        myText.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-        myText.setEllipsize(TextUtils.TruncateAt.MARQUEE);
-        myText.setMaxLines(1);
-        myText.setPadding((int) DensityUtils.px2dp(mContext,350f), 0, 0, 0);
-        myText.setText(content);
-        return myText;
+//    private TextView createChidView(String content) {
+//        AbsListView.LayoutParams layoutParams = new AbsListView.LayoutParams(
+//                ViewGroup.LayoutParams.FILL_PARENT, (int) DensityUtils.px2dp(mContext,250f));
+//        TextView myText = new TextView(mContext);
+//        myText.setTextSize(16);
+//        myText.setLayoutParams(layoutParams);
+//        myText.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
+//        myText.setEllipsize(TextUtils.TruncateAt.MARQUEE);
+//        myText.setMaxLines(2);
+//        myText.setPadding((int) DensityUtils.px2dp(mContext,350f), 0, 0, 0);
+//        myText.setText(content);
+//        return myText;
+//    }
+
+    private static class ViewHolder
+    {
+        private TextView name;
+        private ImageView playImage;
     }
 }

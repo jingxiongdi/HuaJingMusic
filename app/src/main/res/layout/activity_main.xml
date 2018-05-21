@@ -50,5 +50,8 @@
         android:layout_height="800dp"
         android:layout_below="@+id/id_toolbar"
         android:layout_marginTop="10dp"
+        android:divider="#000000"
+        android:dividerHeight="1dp"
+        android:childDivider="#8eae3f3f"
         />
 </RelativeLayout>
