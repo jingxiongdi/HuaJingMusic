@@ -9,12 +9,15 @@ import android.media.MediaPlayer;
 import android.os.IBinder;
 import android.support.v7.app.AlertDialog;
 import android.os.Bundle;
+import android.support.v7.widget.AppCompatSeekBar;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ExpandableListView;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.jingxiongdi.huajingmusic.adapter.MainAdapter;
 import com.jingxiongdi.huajingmusic.bean.Song;
@@ -30,9 +33,17 @@ public class MainActivity extends BaseActivity {
     private ArrayList<String> songListString = new ArrayList<>();
     private ArrayList<ArrayList<Song>> songList = new ArrayList<>();
     private MainAdapter mainAdapter = null;
-    private MediaPlayer   player  =   null;
+
     private PlayService playService = null;
     private Intent intent = null;
+    private ImageView preBtn = null;
+    private ImageView playOrPauseBtn = null;
+    private ImageView nextBtn = null;
+    private int curPlayPostion = 0;
+    private int curPlayListPostion = 0;
+    private TextView curTime = null;
+    private TextView allTime = null;
+    private AppCompatSeekBar seekBar = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,28 +85,16 @@ public class MainActivity extends BaseActivity {
       //  songList =(ArrayList<ArrayList<Song>>) SPUtils.get(MainActivity.this, MusicConstants.ALL_MUSIC_IN_PHONE,null);
         playService = new PlayService();
         intent = new Intent(MainActivity.this,PlayService.class);
-        //startService(intent);
-        bindService(intent, serviceConnection,  Context.BIND_AUTO_CREATE);
+        startService(intent);
 
     }
 
-    ServiceConnection serviceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service)
-        {
-            L.d("PlayService","PlayService onServiceConnected");
-            PlayService.MyBinder binder = (PlayService.MyBinder)service;
-            binder.getService();// PlayService
-        }
-        @Override
-        public void onServiceDisconnected(ComponentName name)
-        {
-            L.d("PlayService","PlayService onServiceDisconnected");
-        }
-    };
-
 
     private void setViews() {
+        curTime = findViewById(R.id.cur_time);
+        allTime = findViewById(R.id.all_the_time);
+        seekBar = findViewById(R.id.seekbar);
+
         Toolbar toolbar = findViewById(R.id.id_toolbar);
         setSupportActionBar(toolbar);
         findViewById(R.id.back).setOnClickListener(new View.OnClickListener() {
@@ -107,6 +106,39 @@ public class MainActivity extends BaseActivity {
         expandableListView = findViewById(R.id.expanded_list);
         expandableListView.setOnGroupClickListener(listOnitemClick);
         expandableListView.setOnChildClickListener(childClick);
+
+        preBtn =  findViewById(R.id.back_left);
+        playOrPauseBtn = findViewById(R.id.play_or_pause);
+        nextBtn = findViewById(R.id.next_right);
+
+        preBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(curPlayPostion == 0){
+                    curPlayPostion = songList.size() - 1;
+                }
+                curPlayPostion--;
+                playMusic();
+            }
+        });
+
+        playOrPauseBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                playOrPause();
+            }
+        });
+
+        nextBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(curPlayPostion == songList.size() - 1){
+                    curPlayPostion = 0;
+                }
+                curPlayPostion++;
+                playMusic();
+            }
+        });
     }
 
     ExpandableListView.OnChildClickListener childClick = new ExpandableListView.OnChildClickListener() {
@@ -116,27 +148,9 @@ public class MainActivity extends BaseActivity {
 
             L.d("childClick : i : "+i+" i1 : "+i1);
             //play
-            try{
-                if(player != null){
-                    player.stop();
-                    player.reset();
-                    player = null;
-                }
-
-                player = new MediaPlayer();
-                String  path   = songList.get(i).get(i1).getFileUrl();
-                player.setDataSource(path);
-                player.prepare();
-                player.start();
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-
-            mainAdapter.refreshAdapter(i1);
-            expandableListView.setSelectedChild(0,i1,true);
-
-
-
+            curPlayListPostion = i;
+            curPlayPostion = i1;
+            playMusic();
             return false;
         }
     };
@@ -150,6 +164,40 @@ public class MainActivity extends BaseActivity {
         }
     };
 
+    private void playMusic(){
+        long time = songList.get(curPlayListPostion).get(curPlayPostion).getDuration()/1000;
+        String min = "";
+        String s = "";
+        if(time/60 <10) {
+            min = "0"+time/60;
+        }else {
+            min = ""+time/60;
+        }
+
+        if(time%60<10){
+            s = "0"+time%60;
+        }
+        else {
+            s = ""+time%60;
+        }
+        allTime.setText(min+":"+s+"");
+        playOrPauseBtn.setBackgroundResource(R.mipmap.player_pause_bubble);
+        String  path   = songList.get(curPlayListPostion).get(curPlayPostion).getFileUrl();
+        playService.playMusic(path);
+        mainAdapter.refreshAdapter(curPlayPostion);
+        expandableListView.setSelectedChild(0,curPlayPostion,true);
+    }
+
+    private void playOrPause(){
+        if(playService.isPlaying()){
+            playService.pausePlay();
+            playOrPauseBtn.setBackgroundResource(R.mipmap.player_play_bubble);
+        }else {
+            playService.startPlay();
+            playOrPauseBtn.setBackgroundResource(R.mipmap.player_pause_bubble);
+        }
+    }
+
     private void showExitDialog() {
         new AlertDialog.Builder(MainActivity.this)
                 .setTitle("提示")
@@ -157,6 +205,8 @@ public class MainActivity extends BaseActivity {
                 .setPositiveButton( "是", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
+                        playService.stopPlayMuic();
+                        stopService(intent);
                         MainActivity.this.finish();
                         System.exit(0);
                     }
@@ -178,23 +228,12 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onPause() {
         Log.d("PlayService","onPause");
-        unbindService(serviceConnection);
-        //stopService(intent);
-        playService.stopPlayService();
-        Log.d("PlayService","onPause222");
-        if(player.isPlaying()){
-            player.stop();
-        }
-
 
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
-        if(player.isPlaying()){
-            player.stop();
-        }
         super.onDestroy();
     }
 }

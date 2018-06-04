@@ -5,23 +5,18 @@ import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
+import android.support.annotation.Nullable;
+import android.util.Log;
 
 import com.jingxiongdi.huajingmusic.util.L;
 
 public class PlayService extends Service {
     private MediaPlayer mediaPlayer = null;
     private static final String TAG = PlayService.class.getSimpleName();
-
+    private MediaPlayer   player  =   null;
     public PlayService() {
         L.d(TAG,"PlayService");
        // mediaPlayer = new MediaPlayer();
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
-        L.d(TAG,"PlayService onBind");
-        return new MyBinder();
     }
 
     @Override
@@ -36,27 +31,75 @@ public class PlayService extends Service {
         L.d(TAG,"PlayService onCreate");
     }
 
+    public void playMusic(String path) {
+        try{
+            if(player != null){
+                player.stop();
+                player.reset();
+                player = null;
+            }
 
-    public class MyBinder extends Binder {
-        /** * 获取Service的方法 * @return 返回PlayerService */
-        public PlayService getService(){
-            return PlayService.this;
+            player = new MediaPlayer();
+            player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mediaPlayer) {
+                    mediaPlayer.start();
+                }
+            });
+            player.setOnInfoListener(new MediaPlayer.OnInfoListener() {
+                @Override
+                public boolean onInfo(MediaPlayer mediaPlayer, int i, int i1) {
+                    L.d("oninfojxd","i : "+i+"  i1 : "+i1);
+                    return false;
+                }
+            });
+            player.setDataSource(path);
+            player.prepare();
+            player.start();
+        }catch (Exception e){
+            e.printStackTrace();
         }
     }
 
-    @Override
-    public boolean onUnbind(Intent intent) {
-        L.d(TAG,"PlayService onUnbind");
-        return super.onUnbind(intent);
+    public void stopPlayMuic(){
+        if(player.isPlaying()){
+            player.stop();
+        }
     }
 
-    public void stopPlayService(){
-        stopSelf();
+    public boolean isPlaying() {
+        if(player!=null){
+            return player.isPlaying();
+        }
+        return false;
     }
+
+    public void pausePlay() {
+        if(player!=null&&player.isPlaying()){
+             player.pause();
+        }
+    }
+
+    public void startPlay() {
+        if(player!=null&&!player.isPlaying()){
+            player.start();
+        }
+    }
+
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if(player!=null){
+            player.release();
+            player = null;
+        }
         L.d(TAG,"PlayService onDestroy");
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
     }
 }
