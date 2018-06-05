@@ -3,10 +3,8 @@ package com.jingxiongdi.huajingmusic.service;
 import android.app.Service;
 import android.content.Intent;
 import android.media.MediaPlayer;
-import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
-import android.util.Log;
 
 import com.jingxiongdi.huajingmusic.util.L;
 
@@ -72,6 +70,12 @@ public class PlayService extends Service {
             return player.isPlaying();
         }
         return false;
+    }
+
+    public void setPlaySection(int time){
+        if(player!=null){
+            player.seekTo(time*1000);
+        }
     }
 
     public void pausePlay() {

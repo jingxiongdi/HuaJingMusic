@@ -1,22 +1,19 @@
 package com.jingxiongdi.huajingmusic;
 
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.ServiceConnection;
-import android.media.MediaPlayer;
-import android.os.IBinder;
-import android.support.v7.app.AlertDialog;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.AppCompatSeekBar;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ExpandableListView;
 import android.widget.ImageView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.jingxiongdi.huajingmusic.adapter.MainAdapter;
@@ -27,6 +24,7 @@ import com.jingxiongdi.huajingmusic.util.L;
 import com.jingxiongdi.huajingmusic.util.ToastUtil;
 
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MainActivity extends BaseActivity {
     private ExpandableListView expandableListView = null;
@@ -44,6 +42,44 @@ public class MainActivity extends BaseActivity {
     private TextView curTime = null;
     private TextView allTime = null;
     private AppCompatSeekBar seekBar = null;
+    private static final int EXPAND_LIST = 0;
+    private AtomicInteger nowTime = new AtomicInteger(0);
+    private int curPlaySongDuration = 0;
+    private Thread updateProgressThread = new Thread(){
+        @Override
+        public void run() {
+            super.run();
+            while (nowTime.intValue() < curPlaySongDuration){
+                L.d("jxdddd : "+nowTime.intValue());
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                nowTime.getAndAdd(1);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        seekBar.setProgress(nowTime.intValue());
+                        curTime.setText(setTimeString(nowTime.intValue()));
+                    }
+                });
+            }
+        }
+    };
+    private Handler handler = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what){
+                case EXPAND_LIST:
+                    expandableListView.expandGroup(0,true);
+                    break;
+                default:
+                    break;
+            }
+            super.handleMessage(msg);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,7 +130,24 @@ public class MainActivity extends BaseActivity {
         curTime = findViewById(R.id.cur_time);
         allTime = findViewById(R.id.all_the_time);
         seekBar = findViewById(R.id.seekbar);
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+              //  L.d("jxdzz "+i);
+            }
 
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+              //  L.d("jxdzz onStartTrackingTouch "+seekBar.getProgress());
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+              //  L.d("jxdzz onStopTrackingTouch "+seekBar.getProgress());
+                nowTime.set(seekBar.getProgress());
+                playService.setPlaySection(seekBar.getProgress());
+            }
+        });
         Toolbar toolbar = findViewById(R.id.id_toolbar);
         setSupportActionBar(toolbar);
         findViewById(R.id.back).setOnClickListener(new View.OnClickListener() {
@@ -118,6 +171,7 @@ public class MainActivity extends BaseActivity {
                     curPlayPostion = songList.size() - 1;
                 }
                 curPlayPostion--;
+                nowTime.set(0);
                 playMusic();
             }
         });
@@ -136,6 +190,7 @@ public class MainActivity extends BaseActivity {
                     curPlayPostion = 0;
                 }
                 curPlayPostion++;
+                nowTime.set(0);
                 playMusic();
             }
         });
@@ -150,6 +205,7 @@ public class MainActivity extends BaseActivity {
             //play
             curPlayListPostion = i;
             curPlayPostion = i1;
+            nowTime.set(0);
             playMusic();
             return false;
         }
@@ -164,8 +220,7 @@ public class MainActivity extends BaseActivity {
         }
     };
 
-    private void playMusic(){
-        long time = songList.get(curPlayListPostion).get(curPlayPostion).getDuration()/1000;
+    private String setTimeString(int time){
         String min = "";
         String s = "";
         if(time/60 <10) {
@@ -180,12 +235,30 @@ public class MainActivity extends BaseActivity {
         else {
             s = ""+time%60;
         }
-        allTime.setText(min+":"+s+"");
+
+        return min+":"+s+"";
+    }
+
+    private void playMusic(){
+        long time = songList.get(curPlayListPostion).get(curPlayPostion).getDuration()/1000;
+        curPlaySongDuration = (int) time;
+
+        allTime.setText(setTimeString(curPlaySongDuration));
         playOrPauseBtn.setBackgroundResource(R.mipmap.player_pause_bubble);
         String  path   = songList.get(curPlayListPostion).get(curPlayPostion).getFileUrl();
         playService.playMusic(path);
         mainAdapter.refreshAdapter(curPlayPostion);
         expandableListView.setSelectedChild(0,curPlayPostion,true);
+
+        setSeekBarProgress(curPlaySongDuration);
+    }
+
+    private void setSeekBarProgress(int time){
+        seekBar.setMax(time);
+        seekBar.setProgress(0);
+        if(!updateProgressThread.isAlive()){
+            updateProgressThread.start();
+        }
     }
 
     private void playOrPause(){
@@ -223,6 +296,12 @@ public class MainActivity extends BaseActivity {
             }
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    protected void onResume() {
+        handler.sendEmptyMessageDelayed(EXPAND_LIST,500);
+        super.onResume();
     }
 
     @Override
