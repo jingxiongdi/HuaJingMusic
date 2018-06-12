@@ -21,6 +21,8 @@ import com.jingxiongdi.huajingmusic.bean.Song;
 import com.jingxiongdi.huajingmusic.service.PlayService;
 import com.jingxiongdi.huajingmusic.util.DBHelper;
 import com.jingxiongdi.huajingmusic.util.L;
+import com.jingxiongdi.huajingmusic.util.MusicConstants;
+import com.jingxiongdi.huajingmusic.util.SPUtils;
 import com.jingxiongdi.huajingmusic.util.ToastUtil;
 
 import java.util.ArrayList;
@@ -37,6 +39,7 @@ public class MainActivity extends BaseActivity {
     private ImageView preBtn = null;
     private ImageView playOrPauseBtn = null;
     private ImageView nextBtn = null;
+    private ImageView playModelBtn = null;
     private int curPlayPostion = 0;
     private int curPlayListPostion = 0;
     private TextView curTime = null;
@@ -45,6 +48,7 @@ public class MainActivity extends BaseActivity {
     private static final int EXPAND_LIST = 0;
     private AtomicInteger nowTime = new AtomicInteger(0);
     private int curPlaySongDuration = 0;
+    private int curPlayMode = 0;
     private Thread updateProgressThread = new Thread(){
         @Override
         public void run() {
@@ -125,10 +129,55 @@ public class MainActivity extends BaseActivity {
 
     }
 
+    private void setPlayMode(int show){
+        switch (curPlayMode) {
+            case 0:
+                playModelBtn.setBackgroundResource(R.mipmap.all_cycle);
+                if(show == 1){
+                    ToastUtil.showShort(MainActivity.this,"列表循环");
+                }
+                break;
+            case 1:
+                playModelBtn.setBackgroundResource(R.mipmap.single_cycle);
+                if(show == 1){
+                    ToastUtil.showShort(MainActivity.this,"单曲循环");
+                }
+                break;
+
+            case 2:
+                playModelBtn.setBackgroundResource(R.mipmap.random_cycle);
+                if(show == 1){
+                    ToastUtil.showShort(MainActivity.this,"随机循环");
+                }
+                break;
+            default:
+                playModelBtn.setBackgroundResource(R.mipmap.all_cycle);
+                break;
+        }
+
+
+    }
 
     private void setViews() {
         curTime = findViewById(R.id.cur_time);
         allTime = findViewById(R.id.all_the_time);
+        playModelBtn = findViewById(R.id.play_model);
+        curPlayMode =(int) SPUtils.get(MainActivity.this,MusicConstants.CUR_PLAY_MODE,0);
+        setPlayMode(0);
+        playModelBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(curPlayMode < 2) {
+                    curPlayMode++;
+                } else if(curPlayMode >= 2){
+                    curPlayMode = 0;
+                }
+                setPlayMode(1);
+                SPUtils.put(MainActivity.this,MusicConstants.CUR_PLAY_MODE,curPlayMode);
+
+            }
+        });
+
         seekBar = findViewById(R.id.seekbar);
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
