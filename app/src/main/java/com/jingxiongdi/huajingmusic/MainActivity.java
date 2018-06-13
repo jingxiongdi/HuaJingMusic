@@ -1,5 +1,6 @@
 package com.jingxiongdi.huajingmusic;
 
+import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -26,9 +27,12 @@ import com.jingxiongdi.huajingmusic.util.SPUtils;
 import com.jingxiongdi.huajingmusic.util.ToastUtil;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MainActivity extends BaseActivity {
+import pub.devrel.easypermissions.EasyPermissions;
+
+public class MainActivity extends BaseActivity{
     private ExpandableListView expandableListView = null;
     private ArrayList<String> songListString = new ArrayList<>();
     private ArrayList<ArrayList<Song>> songList = new ArrayList<>();
@@ -216,10 +220,13 @@ public class MainActivity extends BaseActivity {
         preBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                L.d("preBtn curPlayPostionzzz "+curPlayPostion);
                 if(curPlayPostion == 0){
-                    curPlayPostion = songList.size() - 1;
+                    curPlayPostion = songList.get(0).size() - 1;
+                }else{
+                    curPlayPostion--;
                 }
-                curPlayPostion--;
+                L.d("preBtn curPlayPostionzzzzzaa "+curPlayPostion);
                 nowTime.set(0);
                 playMusic();
             }
@@ -235,10 +242,13 @@ public class MainActivity extends BaseActivity {
         nextBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(curPlayPostion == songList.size() - 1){
+                L.d("nextBtn curPlayPostion "+curPlayPostion+"  songList.size() : "+songList.get(0).size());
+                if(curPlayPostion == songList.get(0).size() - 1){
                     curPlayPostion = 0;
+                }else {
+                    curPlayPostion++;
                 }
-                curPlayPostion++;
+                L.d("nextBtn curPlayPostionzzz "+curPlayPostion);
                 nowTime.set(0);
                 playMusic();
             }
@@ -289,6 +299,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void playMusic(){
+        L.d("curPlayPostion : "+curPlayPostion);
         long time = songList.get(curPlayListPostion).get(curPlayPostion).getDuration()/1000;
         curPlaySongDuration = (int) time;
 
@@ -315,6 +326,13 @@ public class MainActivity extends BaseActivity {
             playService.pausePlay();
             playOrPauseBtn.setBackgroundResource(R.mipmap.player_play_bubble);
         }else {
+            if(curPlayListPostion==0){
+                /**
+                 * 解决第一次进入app，点击播放暂停按钮，不播放的问题
+                 */
+                playMusic();
+                return;
+            }
             playService.startPlay();
             playOrPauseBtn.setBackgroundResource(R.mipmap.player_pause_bubble);
         }
@@ -350,6 +368,7 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onResume() {
         handler.sendEmptyMessageDelayed(EXPAND_LIST,500);
+        MusicAppliction.getInstance().setbMainExist(true);
         super.onResume();
     }
 
@@ -364,4 +383,6 @@ public class MainActivity extends BaseActivity {
     protected void onDestroy() {
         super.onDestroy();
     }
+
+
 }
