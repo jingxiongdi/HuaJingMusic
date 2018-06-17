@@ -115,6 +115,13 @@ public class MainAdapter extends BaseExpandableListAdapter {
         notifyDataSetChanged();
     }
 
+    public void refreshData(int p,ArrayList<ArrayList<Song>> arrayLists){
+        songList = arrayLists;
+        curPlayPos = p;
+       // songListString = songListS;
+        notifyDataSetChanged();
+    }
+
     @Override
     public boolean isChildSelectable(int i, int i1) {
         //点击事件不生效

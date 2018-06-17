@@ -1,11 +1,16 @@
 package com.jingxiongdi.huajingmusic;
 
 import android.Manifest;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.AppCompatSeekBar;
 import android.support.v7.widget.Toolbar;
@@ -21,6 +26,7 @@ import com.jingxiongdi.huajingmusic.adapter.MainAdapter;
 import com.jingxiongdi.huajingmusic.bean.Song;
 import com.jingxiongdi.huajingmusic.inteface.PlayControl;
 import com.jingxiongdi.huajingmusic.service.PlayService;
+import com.jingxiongdi.huajingmusic.util.CommonUtil;
 import com.jingxiongdi.huajingmusic.util.DBHelper;
 import com.jingxiongdi.huajingmusic.util.L;
 import com.jingxiongdi.huajingmusic.util.MusicConstants;
@@ -32,6 +38,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import pub.devrel.easypermissions.EasyPermissions;
+
+import static com.jingxiongdi.huajingmusic.util.DBHelper.UserSchema.title;
 
 public class MainActivity extends BaseActivity implements PlayControl{
     private ExpandableListView expandableListView = null;
@@ -56,6 +64,9 @@ public class MainActivity extends BaseActivity implements PlayControl{
     private int curPlayMode = 0;
     private Thread updateProgressThread = null;
     private boolean isPlayerPause = false;
+    private boolean firstSongRFirstPlay = true;
+    private ArrayList<Song> songAll = null;
+    private static final int LOVE_PUSH = 1;
     private Handler handler = new Handler(){
         @Override
         public void handleMessage(Message msg) {
@@ -63,7 +74,9 @@ public class MainActivity extends BaseActivity implements PlayControl{
                 case EXPAND_LIST:
                     expandableListView.expandGroup(0,true);
                     break;
-
+                case LOVE_PUSH:
+                    initNotification();
+                    break;
                 default:
                     break;
             }
@@ -79,6 +92,35 @@ public class MainActivity extends BaseActivity implements PlayControl{
         setViews();
 
         initData();
+
+        handler.sendEmptyMessageDelayed(LOVE_PUSH,5000);
+
+    }
+
+    private void initNotification() {
+        //发送通知
+        NotificationCompat.Builder notifyBuilder =
+                new NotificationCompat.Builder(getApplicationContext())
+                        //设置可以显示多行文本
+                        .setStyle(new NotificationCompat.BigTextStyle().bigText("ccc"))
+                        .setContentTitle("接住啦，这是一个爱心推送！")
+                        .setContentText("锅锅爱你，每天为你打call！")
+                        .setSmallIcon(R.drawable.ic_launcher_background)
+                        //设置大图标
+                        .setLargeIcon(BitmapFactory.decodeResource(getApplicationContext().getResources(), R.drawable.ic_launcher_background))
+                        // 点击消失
+                        .setAutoCancel(true)
+                        // 设置该通知优先级
+                        .setPriority(Notification.PRIORITY_MAX)
+                        .setTicker("悬浮通知")
+                        // 通知首次出现在通知栏，带上升动画效果的
+                        .setWhen(System.currentTimeMillis())
+                        // 通知产生的时间，会在通知信息里显示
+                        // 向通知添加声音、闪灯和振动效果的最简单、最一致的方式是使用当前的用户默认设置，使用defaults属性，可以组合：
+                        .setDefaults( Notification.DEFAULT_VIBRATE | Notification.DEFAULT_ALL | Notification.DEFAULT_SOUND );
+        NotificationManager mNotifyMgr = (NotificationManager) getApplicationContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        Notification notification = notifyBuilder.build();
+        mNotifyMgr.notify( 0, notification);
     }
 
     private void startANewThread(){
@@ -120,7 +162,7 @@ public class MainActivity extends BaseActivity implements PlayControl{
         new Thread(new Runnable() {
             @Override
             public void run() {
-                ArrayList<Song> songAll = DBHelper.getInstance(MainActivity.this).queryAllSong();
+                songAll = DBHelper.getInstance(MainActivity.this).queryAllSong();
                 songList = new ArrayList<>();
                 songList.add(songAll);
                 if(songAll == null){
@@ -154,12 +196,18 @@ public class MainActivity extends BaseActivity implements PlayControl{
             case 0:
                 playModelBtn.setBackgroundResource(R.mipmap.all_cycle);
                 if(show == 1){
+                    songList .clear();
+                    songList.add(songAll);
+                    mainAdapter.refreshData(curPlayPostion,songList);
                     ToastUtil.showShort(MainActivity.this,"列表循环");
                 }
                 break;
             case 1:
                 playModelBtn.setBackgroundResource(R.mipmap.single_cycle);
                 if(show == 1){
+                    songList .clear();
+                    songList.add(songAll);
+                    mainAdapter.refreshData(curPlayPostion,songList);
                     ToastUtil.showShort(MainActivity.this,"单曲循环");
                 }
                 break;
@@ -167,7 +215,24 @@ public class MainActivity extends BaseActivity implements PlayControl{
             case 2:
                 playModelBtn.setBackgroundResource(R.mipmap.random_cycle);
                 if(show == 1){
-                    ToastUtil.showShort(MainActivity.this,"随机循环");
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            ArrayList<Song> mySongList = songList.get(0);
+                            songList.clear();
+                            songList.add(CommonUtil.getRomSongList(mySongList));
+                            L.d("songList zzz "+songList.size());
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mainAdapter.refreshData(curPlayPostion,songList);
+                                    ToastUtil.showShort(MainActivity.this,"随机循环");
+                                }
+                            });
+                        }
+                    }).start();
+
+
                 }
                 break;
             default:
@@ -349,10 +414,11 @@ public class MainActivity extends BaseActivity implements PlayControl{
             pauseSeek = seekBar.getProgress();
             playOrPauseBtn.setBackgroundResource(R.mipmap.player_play_bubble);
         }else {
-            if(curPlayPostion==0){
+            if(curPlayPostion==0&&firstSongRFirstPlay){
                 /**
                  * 解决第一次进入app，点击播放暂停按钮，不播放的问题
                  */
+                firstSongRFirstPlay = false;
                 playMusic();
                 return;
             }
