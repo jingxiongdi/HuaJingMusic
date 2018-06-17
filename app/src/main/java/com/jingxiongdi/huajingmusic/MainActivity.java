@@ -19,6 +19,7 @@ import android.widget.TextView;
 
 import com.jingxiongdi.huajingmusic.adapter.MainAdapter;
 import com.jingxiongdi.huajingmusic.bean.Song;
+import com.jingxiongdi.huajingmusic.inteface.PlayControl;
 import com.jingxiongdi.huajingmusic.service.PlayService;
 import com.jingxiongdi.huajingmusic.util.DBHelper;
 import com.jingxiongdi.huajingmusic.util.L;
@@ -32,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import pub.devrel.easypermissions.EasyPermissions;
 
-public class MainActivity extends BaseActivity{
+public class MainActivity extends BaseActivity implements PlayControl{
     private ExpandableListView expandableListView = null;
     private ArrayList<String> songListString = new ArrayList<>();
     private ArrayList<ArrayList<Song>> songList = new ArrayList<>();
@@ -53,28 +54,8 @@ public class MainActivity extends BaseActivity{
     private AtomicInteger nowTime = new AtomicInteger(0);
     private int curPlaySongDuration = 0;
     private int curPlayMode = 0;
-    private Thread updateProgressThread = new Thread(){
-        @Override
-        public void run() {
-            super.run();
-            while (nowTime.intValue() < curPlaySongDuration){
-                L.d("jxdddd : "+nowTime.intValue());
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                nowTime.getAndAdd(1);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        seekBar.setProgress(nowTime.intValue());
-                        curTime.setText(setTimeString(nowTime.intValue()));
-                    }
-                });
-            }
-        }
-    };
+    private Thread updateProgressThread = null;
+    private boolean isPlayerPause = false;
     private Handler handler = new Handler(){
         @Override
         public void handleMessage(Message msg) {
@@ -82,6 +63,7 @@ public class MainActivity extends BaseActivity{
                 case EXPAND_LIST:
                     expandableListView.expandGroup(0,true);
                     break;
+
                 default:
                     break;
             }
@@ -97,6 +79,40 @@ public class MainActivity extends BaseActivity{
         setViews();
 
         initData();
+    }
+
+    private void startANewThread(){
+//        if(updateProgressThread !=null) {
+//            updateProgressThread = null;
+//        }
+
+        updateProgressThread = new Thread(){
+            @Override
+            public void run() {
+                super.run();
+                while (true){
+                    if(!isPlayerPause && (nowTime.intValue() < curPlaySongDuration)){
+                       // L.d("jxdddd : "+nowTime.intValue());
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        nowTime.getAndAdd(1);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                seekBar.setProgress(nowTime.intValue());
+                                curTime.setText(setTimeString(nowTime.intValue()));
+                            }
+                        });
+                    }
+
+                }
+            }
+        };
+
+        updateProgressThread.start();
     }
 
     private void initData() {
@@ -127,7 +143,7 @@ public class MainActivity extends BaseActivity{
             }
         }).start();
       //  songList =(ArrayList<ArrayList<Song>>) SPUtils.get(MainActivity.this, MusicConstants.ALL_MUSIC_IN_PHONE,null);
-        playService = new PlayService();
+        playService = new PlayService(this);
         intent = new Intent(MainActivity.this,PlayService.class);
         startService(intent);
 
@@ -243,16 +259,20 @@ public class MainActivity extends BaseActivity{
             @Override
             public void onClick(View view) {
                 L.d("nextBtn curPlayPostion "+curPlayPostion+"  songList.size() : "+songList.get(0).size());
-                if(curPlayPostion == songList.get(0).size() - 1){
-                    curPlayPostion = 0;
-                }else {
-                    curPlayPostion++;
-                }
-                L.d("nextBtn curPlayPostionzzz "+curPlayPostion);
-                nowTime.set(0);
-                playMusic();
+                playNext();
             }
         });
+    }
+
+    private void playNext(){
+        if(curPlayPostion == songList.get(0).size() - 1){
+            curPlayPostion = 0;
+        }else {
+            curPlayPostion++;
+        }
+        L.d("nextBtn curPlayPostionzzz "+curPlayPostion);
+        nowTime.set(0);
+        playMusic();
     }
 
     ExpandableListView.OnChildClickListener childClick = new ExpandableListView.OnChildClickListener() {
@@ -316,24 +336,29 @@ public class MainActivity extends BaseActivity{
     private void setSeekBarProgress(int time){
         seekBar.setMax(time);
         seekBar.setProgress(0);
-        if(!updateProgressThread.isAlive()){
-            updateProgressThread.start();
+        if(updateProgressThread==null){
+            startANewThread();
         }
-    }
 
+    }
+    private int pauseSeek = 0;
     private void playOrPause(){
         if(playService.isPlaying()){
+            isPlayerPause = true;
             playService.pausePlay();
+            pauseSeek = seekBar.getProgress();
             playOrPauseBtn.setBackgroundResource(R.mipmap.player_play_bubble);
         }else {
-            if(curPlayListPostion==0){
+            if(curPlayPostion==0){
                 /**
                  * 解决第一次进入app，点击播放暂停按钮，不播放的问题
                  */
                 playMusic();
                 return;
             }
+            isPlayerPause = false;
             playService.startPlay();
+            playService.setPlaySection(pauseSeek);
             playOrPauseBtn.setBackgroundResource(R.mipmap.player_pause_bubble);
         }
     }
@@ -380,9 +405,29 @@ public class MainActivity extends BaseActivity{
     }
 
     @Override
+    protected void onStop() {
+        super.onStop();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
     }
 
 
+    @Override
+    public void playCompleteNext() {
+        L.d("playCompleteNext");
+        if(curPlayMode == 1){
+            nowTime.set(0);
+            setSeekBarProgress(curPlaySongDuration);
+            playService.startPlay();
+        }else{
+            /**
+             * 代码模拟点击事件
+             *
+             */
+            nextBtn.performClick();
+        }
+    }
 }

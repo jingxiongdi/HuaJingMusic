@@ -6,15 +6,24 @@ import android.media.MediaPlayer;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 
+import com.jingxiongdi.huajingmusic.inteface.PlayControl;
 import com.jingxiongdi.huajingmusic.util.L;
 
 public class PlayService extends Service {
     private MediaPlayer mediaPlayer = null;
     private static final String TAG = PlayService.class.getSimpleName();
     private MediaPlayer   player  =   null;
+    private PlayControl playControl = null;
     public PlayService() {
+        /**
+         * 这个方法不能省略，否则会报没有默认的构造函数
+         */
+    }
+
+    public PlayService(PlayControl p) {
         L.d(TAG,"PlayService");
        // mediaPlayer = new MediaPlayer();
+        playControl = p;
     }
 
     @Override
@@ -41,7 +50,7 @@ public class PlayService extends Service {
             player.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 @Override
                 public void onCompletion(MediaPlayer mediaPlayer) {
-                    mediaPlayer.start();
+                    playControl.playCompleteNext();
                 }
             });
             player.setOnInfoListener(new MediaPlayer.OnInfoListener() {
@@ -80,12 +89,14 @@ public class PlayService extends Service {
 
     public void pausePlay() {
         if(player!=null&&player.isPlaying()){
+            L.d("pausePlay");
              player.pause();
         }
     }
 
     public void startPlay() {
         if(player!=null&&!player.isPlaying()){
+            L.d("startPlay");
             player.start();
         }
     }

@@ -1,26 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="horizontal" android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:gravity="center_vertical"
+    android:layout_height="30dp"
     >
     
     <ImageView
         android:id="@+id/play_img"
-        android:layout_width="30dp"
-        android:layout_height="30dp"
+        android:layout_width="15dp"
+        android:layout_height="15dp"
+        android:scaleType="fitXY"
         android:background="@mipmap/mini_play_button"
         />
     <com.jingxiongdi.huajingmusic.uistyle.MarqueeTextView
         android:id="@+id/name"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="30dp"
         android:textColor="@color/colorAccent"
         android:textSize="16sp"
         android:marqueeRepeatLimit="marquee_forever"
         android:singleLine="true"
         android:ellipsize="marquee"
-        android:layout_gravity="left"
-        android:gravity="left"
+        android:layout_gravity="left|center_vertical"
+        android:gravity="left|center_vertical"
         />
 
 </LinearLayout>
